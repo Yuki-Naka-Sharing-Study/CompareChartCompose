@@ -1,20 +1,23 @@
 package com.example.comparechart
 
-import android.graphics.Color
 import android.os.Bundle
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.room.*
 import com.example.comparechart.ui.theme.CompareChartTheme
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.XAxis
@@ -22,18 +25,65 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
+
+@Entity
+data class Score(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val date: String,
+    val reading: Float,
+    val listening: Float,
+    val writing: Float
+)
+
+@Dao
+interface ScoreDao {
+    @Insert
+    suspend fun insertScore(score: Score)
+
+    @Query("SELECT * FROM Score")
+    fun getAllScores(): Flow<List<Score>>
+}
+
+@Database(entities = [Score::class], version = 1)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun scoreDao(): ScoreDao
+}
+
+class ScoreRepository(private val scoreDao: ScoreDao) {
+    val allScores: Flow<List<Score>> = scoreDao.getAllScores()
+
+    suspend fun insertScore(score: Score) {
+        scoreDao.insertScore(score)
+    }
+}
+
+class ScoreViewModel(private val repository: ScoreRepository) : ViewModel() {
+    val scores = repository.allScores
+
+    fun addScore(date: String, reading: Float, listening: Float, writing: Float) {
+        viewModelScope.launch {
+            repository.insertScore(Score(date = date, reading = reading, listening = listening, writing = writing))
+        }
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val database = Room.databaseBuilder(applicationContext, AppDatabase::class.java, "score_db").build()
+        val repository = ScoreRepository(database.scoreDao())
+        val viewModel = ScoreViewModel(repository)
+
         setContent {
             CompareChartTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ScoreChart()
+                    MainContent(viewModel)
                 }
             }
         }
@@ -41,7 +91,66 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun ScoreChart() {
+fun MainContent(viewModel: ScoreViewModel) {
+    val scores by viewModel.scores.collectAsState(initial = emptyList())
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        var date by remember { mutableStateOf(TextFieldValue()) }
+        var reading by remember { mutableStateOf(TextFieldValue()) }
+        var listening by remember { mutableStateOf(TextFieldValue()) }
+        var writing by remember { mutableStateOf(TextFieldValue()) }
+
+        BasicTextField(
+            value = date,
+            onValueChange = { date = it },
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { innerTextField -> Box { innerTextField() } }
+        )
+
+        BasicTextField(
+            value = reading,
+            onValueChange = { reading = it },
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { innerTextField -> Box { innerTextField() } }
+        )
+
+        BasicTextField(
+            value = listening,
+            onValueChange = { listening = it },
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { innerTextField -> Box { innerTextField() } }
+        )
+
+        BasicTextField(
+            value = writing,
+            onValueChange = { writing = it },
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { innerTextField -> Box { innerTextField() } }
+        )
+
+        Button(onClick = {
+            viewModel.addScore(
+                date.text,
+                reading.text.toFloat(),
+                listening.text.toFloat(),
+                writing.text.toFloat()
+            )
+        }) {
+            Text("スコアを追加")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ScoreChart(scores)
+    }
+}
+
+@Composable
+fun ScoreChart(scores: List<Score>) {
     AndroidView(
         factory = { context ->
             LineChart(context).apply {
@@ -49,61 +158,27 @@ fun ScoreChart() {
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
-                // データのセットアップ
-                val readingScores = listOf(690f, 710f, 800f)
-                val listeningScores = listOf(700f, 650f, 850f)
-                val writingScores = listOf(750f, 730f, 790f)
-
-                val examDates = listOf("2023-09-01", "2023-10-01", "2023-11-01")
-
-                val entriesReading = readingScores.mapIndexed { index, score ->
-                    Entry(index.toFloat(), score)
-                }
-                val entriesListening = listeningScores.mapIndexed { index, score ->
-                    Entry(index.toFloat(), score)
-                }
-                val entriesWriting = writingScores.mapIndexed { index, score ->
-                    Entry(index.toFloat(), score)
-                }
-
-                val dataSetReading = LineDataSet(entriesReading, "リーディングスコア").apply {
-                    color = Color.RED
-                    valueTextColor = Color.BLACK
-                }
-                val dataSetListening = LineDataSet(entriesListening, "リスニングスコア").apply {
-                    color = Color.BLUE
-                    valueTextColor = Color.BLACK
-                }
-                val dataSetWriting = LineDataSet(entriesWriting, "ライティングスコア").apply {
-                    color = Color.YELLOW
-                    valueTextColor = Color.BLACK
-                }
-
-                val lineData = LineData(dataSetReading, dataSetListening, dataSetWriting)
-                this.data = lineData
-                // X軸ラベル設定
-                xAxis.valueFormatter = IndexAxisValueFormatter(examDates)
-                xAxis.position = XAxis.XAxisPosition.BOTTOM
-                xAxis.granularity = 1f
-                xAxis.setDrawGridLines(false)
-                // Y軸設定
-                axisLeft.axisMinimum = 0f
-                axisRight.isEnabled = false
-                description.isEnabled = false
-                legend.isEnabled = true
-                invalidate() // グラフの再描画
             }
         },
         modifier = Modifier
             .fillMaxWidth()
             .height(300.dp)
-    )
-}
+    ) { chart ->
+        val entriesReading = scores.mapIndexed { index, score -> Entry(index.toFloat(), score.reading) }
+        val entriesListening = scores.mapIndexed { index, score -> Entry(index.toFloat(), score.listening) }
+        val entriesWriting = scores.mapIndexed { index, score -> Entry(index.toFloat(), score.writing) }
+        val dates = scores.map { it.date }
 
-@Preview(showBackground = true)
-@Composable
-fun ScoreChartPreview() {
-    CompareChartTheme {
-        ScoreChart()
+        val dataSetReading = LineDataSet(entriesReading, "リーディングスコア").apply { color = android.graphics.Color.RED }
+        val dataSetListening = LineDataSet(entriesListening, "リスニングスコア").apply { color = android.graphics.Color.BLUE }
+        val dataSetWriting = LineDataSet(entriesWriting, "ライティングスコア").apply { color = android.graphics.Color.YELLOW }
+
+        chart.data = LineData(dataSetReading, dataSetListening, dataSetWriting)
+        chart.xAxis.apply {
+            valueFormatter = IndexAxisValueFormatter(dates)
+            position = XAxis.XAxisPosition.BOTTOM
+            granularity = 1f
+        }
+        chart.invalidate()
     }
 }
