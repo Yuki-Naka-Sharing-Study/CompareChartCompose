@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.jetbrainsKotlinAndroid)
     alias(libs.plugins.room)
     alias(libs.plugins.google.devtools.ksp)
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
