@@ -45,10 +45,10 @@ data class Score(
 interface ScoreDao {
     @Insert
     suspend fun insertScore(score: Score)
-
     @Delete
     suspend fun deleteScore(score: Score)
-
+    @Query("DELETE FROM Score")
+    suspend fun deleteAllScores()
     @Query("SELECT * FROM Score")
     fun getAllScores(): Flow<List<Score>>
 }
@@ -67,6 +67,10 @@ class ScoreRepository(private val scoreDao: ScoreDao) {
     suspend fun deleteScore(score: Score) {
         scoreDao.deleteScore(score)
     }
+
+    suspend fun deleteAllScores() {
+        scoreDao.deleteAllScores()
+    }
 }
 
 class ScoreViewModel(private val repository: ScoreRepository) : ViewModel() {
@@ -80,6 +84,11 @@ class ScoreViewModel(private val repository: ScoreRepository) : ViewModel() {
     fun deleteScore(score: Score) {
         viewModelScope.launch {
             repository.deleteScore(score)
+        }
+    }
+    fun deleteAllScores() {
+        viewModelScope.launch {
+            repository.deleteAllScores()
         }
     }
 }
@@ -119,6 +128,8 @@ fun MainContent(viewModel: ScoreViewModel) {
         var listening by remember { mutableStateOf(TextFieldValue()) }
         var writing by remember { mutableStateOf(TextFieldValue()) }
 
+        Spacer(modifier = Modifier.height(32.dp))
+
         OutlinedTextField(
             value = date.text,
             onValueChange = { date = TextFieldValue(it) },
@@ -144,6 +155,8 @@ fun MainContent(viewModel: ScoreViewModel) {
             label = { Text("Writing") }
         )
 
+        Spacer(modifier = Modifier.height(16.dp))
+
         Button(onClick = {
             viewModel.addScore(
                 date.text,
@@ -166,6 +179,15 @@ fun MainContent(viewModel: ScoreViewModel) {
             modifier = Modifier.padding(top = 8.dp)
         ) {
             Text("最後のスコアを削除")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = { viewModel.deleteAllScores()},
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            Text("全てのスコアを削除")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
