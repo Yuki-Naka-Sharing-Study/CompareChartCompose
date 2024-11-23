@@ -304,7 +304,7 @@ fun <T> ScrollPicker(
 
                     if (visibleItems.isNotEmpty()) {
                         val centerIndex = if (firstVisibleItemOffset > (visibleItems.first().size / 2)) {
-                            firstVisibleIndex + 1
+                            firstVisibleIndex + 5
                         } else {
                             firstVisibleIndex
                         }.coerceIn(0, items.lastIndex)
