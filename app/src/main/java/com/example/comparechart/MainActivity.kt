@@ -221,7 +221,7 @@ fun DatePickerDialog(
     onDateSelected: (Int, Int, Int) -> Unit
 ) {
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-    val years = (1900..2100).toList()
+    val years = (2016..2100).toList()
     val months = (1..12).toList()
     val days = (1..31).toList()
 
@@ -348,7 +348,6 @@ fun <T> ScrollPicker(
         }
     }
 }
-
 
 @Composable
 fun ConfirmDeleteDialog(
