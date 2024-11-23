@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -25,11 +24,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.graphics.blue
-import androidx.core.graphics.green
-import androidx.core.graphics.red
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.room.*
 import com.example.comparechart.ui.theme.CompareChartTheme
 import com.github.mikephil.charting.charts.LineChart
@@ -38,70 +32,8 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import java.util.Calendar
-
-@Entity
-data class Score(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val date: String,
-    val reading: Float,
-    val listening: Float,
-    val writing: Float
-)
-
-@Dao
-interface ScoreDao {
-    @Insert
-    suspend fun insertScore(score: Score)
-    @Delete
-    suspend fun deleteScore(score: Score)
-    @Query("DELETE FROM Score")
-    suspend fun deleteAllScores()
-    @Query("SELECT * FROM Score")
-    fun getAllScores(): Flow<List<Score>>
-}
-
-@Database(entities = [Score::class], version = 1)
-abstract class AppDatabase : RoomDatabase() {
-    abstract fun scoreDao(): ScoreDao
-}
-
-class ScoreRepository(private val scoreDao: ScoreDao) {
-    val allScores: Flow<List<Score>> = scoreDao.getAllScores()
-
-    suspend fun insertScore(score: Score) {
-        scoreDao.insertScore(score)
-    }
-    suspend fun deleteScore(score: Score) {
-        scoreDao.deleteScore(score)
-    }
-
-    suspend fun deleteAllScores() {
-        scoreDao.deleteAllScores()
-    }
-}
-
-class ScoreViewModel(private val repository: ScoreRepository) : ViewModel() {
-    val scores = repository.allScores
-
-    fun addScore(date: String, reading: Float, listening: Float, writing: Float) {
-        viewModelScope.launch {
-            repository.insertScore(Score(date = date, reading = reading, listening = listening, writing = writing))
-        }
-    }
-    fun deleteScore(score: Score) {
-        viewModelScope.launch {
-            repository.deleteScore(score)
-        }
-    }
-    fun deleteAllScores() {
-        viewModelScope.launch {
-            repository.deleteAllScores()
-        }
-    }
-}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
