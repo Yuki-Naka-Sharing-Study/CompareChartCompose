@@ -302,6 +302,8 @@ fun <T> ScrollPicker(
                     val firstVisibleItemOffset = listState.firstVisibleItemScrollOffset
                     val visibleItems = listState.layoutInfo.visibleItemsInfo
 
+                    // 「月」では「12」を選択できるも「7 ~ 11」が選択不可能。
+                    // 「日」では「31」を選択できるも「26 ~ 30」が選択不可能。
                     if (visibleItems.isNotEmpty()) {
                         val centerIndex = if (firstVisibleItemOffset > (visibleItems.first().size / 2)) {
                             firstVisibleIndex + 5
