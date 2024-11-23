@@ -84,7 +84,7 @@ fun MainContent(viewModel: ScoreViewModel) {
             value = selectedDate,
             onValueChange = { },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Date (YYYY-MM-DD)") },
+            label = { Text("日付 (年-月-日)") },
             readOnly = true
         )
         OutlinedTextField(
