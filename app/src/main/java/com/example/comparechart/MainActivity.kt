@@ -118,6 +118,10 @@ class MainActivity : ComponentActivity() {
 fun MainContent(viewModel: ScoreViewModel) {
     val scores by viewModel.scores.collectAsState(initial = emptyList())
 
+    // ダイアログの表示状態を管理するフラグ
+    var showLastScoreDialog by remember { mutableStateOf(false) }
+    var showAllScoresDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -170,10 +174,11 @@ fun MainContent(viewModel: ScoreViewModel) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // 最後のスコア削除ボタン
         Button(
             onClick = {
                 if (scores.isNotEmpty()) {
-                    viewModel.deleteScore(scores.last())
+                    showLastScoreDialog = true
                 }
             },
             modifier = Modifier.padding(top = 8.dp)
@@ -183,8 +188,11 @@ fun MainContent(viewModel: ScoreViewModel) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // 全てのスコア削除ボタン
         Button(
-            onClick = { viewModel.deleteAllScores()},
+            onClick = {
+                showAllScoresDialog = true
+            },
             modifier = Modifier.padding(top = 8.dp)
         ) {
             Text("全てのスコアを削除")
@@ -193,8 +201,56 @@ fun MainContent(viewModel: ScoreViewModel) {
         Spacer(modifier = Modifier.height(16.dp))
 
         ScoreChart(scores)
+
+        // 最後のスコア削除確認ダイアログ
+        if (showLastScoreDialog) {
+            ConfirmDeleteDialog(
+                message = "最後のスコアを削除しますか？",
+                onConfirm = {
+                    viewModel.deleteScore(scores.last())
+                    showLastScoreDialog = false
+                },
+                onDismiss = { showLastScoreDialog = false }
+            )
+        }
+
+        // 全てのスコア削除確認ダイアログ
+        if (showAllScoresDialog) {
+            ConfirmDeleteDialog(
+                message = "全てのスコアを削除しますか？",
+                onConfirm = {
+                    viewModel.deleteAllScores()
+                    showAllScoresDialog = false
+                },
+                onDismiss = { showAllScoresDialog = false }
+            )
+        }
     }
 }
+
+@Composable
+fun ConfirmDeleteDialog(
+    message: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { onDismiss() },
+        confirmButton = {
+            Button(onClick = { onConfirm() }) {
+                Text("削除")
+            }
+        },
+        dismissButton = {
+            Button(onClick = { onDismiss() }) {
+                Text("キャンセル")
+            }
+        },
+        text = { Text(message) }
+    )
+}
+
+
 
 @Preview(showBackground = true)
 @Composable
