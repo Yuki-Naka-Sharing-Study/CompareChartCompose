@@ -174,15 +174,15 @@ fun MainContent(viewModel: ScoreViewModel) {
             )
         }
         if (showDuplicateDateErrorDialog) {
-            ConfirmDeleteDialog(
+            OkDialog(
                 message = "同じ日付のスコアは登録できません。",
                 onConfirm = { showDuplicateDateErrorDialog = false },
                 onDismiss = { showDuplicateDateErrorDialog = false }
             )
         }
         if (showErrorDialog) {
-            ConfirmDeleteDialog(
-                message = "入力が不正です。正しい数値を入力してください。",
+            OkDialog(
+                message = "入力されていない項目があります。",
                 onConfirm = { showErrorDialog = false },
                 onDismiss = { showErrorDialog = false }
             )
@@ -366,6 +366,23 @@ fun ConfirmDeleteDialog(
         dismissButton = {
             Button(onClick = { onDismiss() }) {
                 Text("キャンセル")
+            }
+        },
+        text = { Text(message) }
+    )
+}
+
+@Composable
+fun OkDialog(
+    message: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { onDismiss() },
+        confirmButton = {
+            Button(onClick = { onConfirm() }) {
+                Text("OK")
             }
         },
         text = { Text(message) }
