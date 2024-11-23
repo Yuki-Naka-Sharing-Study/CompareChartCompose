@@ -1,18 +1,22 @@
 package com.example.comparechart
 
+import android.graphics.Color
 import android.os.Bundle
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModel
@@ -104,32 +108,36 @@ fun MainContent(viewModel: ScoreViewModel) {
         var listening by remember { mutableStateOf(TextFieldValue()) }
         var writing by remember { mutableStateOf(TextFieldValue()) }
 
-        BasicTextField(
-            value = date,
-            onValueChange = { date = it },
+        // 「OutlinedTextField」に修正。（見づらかったので。）
+        OutlinedTextField(
+            value = date.text,
+            onValueChange = { date = TextFieldValue(it) },
             modifier = Modifier.fillMaxWidth(),
-            decorationBox = { innerTextField -> Box { innerTextField() } }
+            label = { Text("日付") }
         )
 
-        BasicTextField(
-            value = reading,
-            onValueChange = { reading = it },
+        // 「OutlinedTextField」に修正。（見づらかったので。）
+        OutlinedTextField(
+            value = reading.text,
+            onValueChange = { reading = TextFieldValue(it) },
             modifier = Modifier.fillMaxWidth(),
-            decorationBox = { innerTextField -> Box { innerTextField() } }
+            label = { Text("Reading") }
         )
 
-        BasicTextField(
-            value = listening,
-            onValueChange = { listening = it },
+        // 「OutlinedTextField」に修正。（見づらかったので。）
+        OutlinedTextField(
+            value = listening.text,
+            onValueChange = { listening = TextFieldValue(it) },
             modifier = Modifier.fillMaxWidth(),
-            decorationBox = { innerTextField -> Box { innerTextField() } }
+            label = { Text("Listening") }
         )
 
-        BasicTextField(
-            value = writing,
-            onValueChange = { writing = it },
+        // 「OutlinedTextField」に修正。（見づらかったので。）
+        OutlinedTextField(
+            value = writing.text,
+            onValueChange = { writing = TextFieldValue(it) },
             modifier = Modifier.fillMaxWidth(),
-            decorationBox = { innerTextField -> Box { innerTextField() } }
+            label = { Text("Writing") }
         )
 
         Button(onClick = {
@@ -146,6 +154,17 @@ fun MainContent(viewModel: ScoreViewModel) {
         Spacer(modifier = Modifier.height(16.dp))
 
         ScoreChart(scores)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MainContentPreview(
+    @PreviewParameter(PreviewParameterProvider::class)
+    viewModel: ScoreViewModel
+) {
+    CompareChartTheme() {
+        MainContent(viewModel = viewModel)
     }
 }
 
@@ -169,9 +188,9 @@ fun ScoreChart(scores: List<Score>) {
         val entriesWriting = scores.mapIndexed { index, score -> Entry(index.toFloat(), score.writing) }
         val dates = scores.map { it.date }
 
-        val dataSetReading = LineDataSet(entriesReading, "リーディングスコア").apply { color = android.graphics.Color.RED }
-        val dataSetListening = LineDataSet(entriesListening, "リスニングスコア").apply { color = android.graphics.Color.BLUE }
-        val dataSetWriting = LineDataSet(entriesWriting, "ライティングスコア").apply { color = android.graphics.Color.YELLOW }
+        val dataSetReading = LineDataSet(entriesReading, "リーディングスコア").apply { color = Color.RED }
+        val dataSetListening = LineDataSet(entriesListening, "リスニングスコア").apply { color = Color.BLUE }
+        val dataSetWriting = LineDataSet(entriesWriting, "ライティングスコア").apply { color = Color.YELLOW }
 
         chart.data = LineData(dataSetReading, dataSetListening, dataSetWriting)
         chart.xAxis.apply {
@@ -180,5 +199,15 @@ fun ScoreChart(scores: List<Score>) {
             granularity = 1f
         }
         chart.invalidate()
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ScoreChartPreview() {
+    CompareChartTheme() {
+        ScoreChart(
+            scores = TODO()
+        )
     }
 }
