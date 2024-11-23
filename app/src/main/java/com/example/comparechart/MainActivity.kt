@@ -46,6 +46,9 @@ interface ScoreDao {
     @Insert
     suspend fun insertScore(score: Score)
 
+    @Delete
+    suspend fun deleteScore(score: Score)
+
     @Query("SELECT * FROM Score")
     fun getAllScores(): Flow<List<Score>>
 }
@@ -61,6 +64,9 @@ class ScoreRepository(private val scoreDao: ScoreDao) {
     suspend fun insertScore(score: Score) {
         scoreDao.insertScore(score)
     }
+    suspend fun deleteScore(score: Score) {
+        scoreDao.deleteScore(score)
+    }
 }
 
 class ScoreViewModel(private val repository: ScoreRepository) : ViewModel() {
@@ -69,6 +75,11 @@ class ScoreViewModel(private val repository: ScoreRepository) : ViewModel() {
     fun addScore(date: String, reading: Float, listening: Float, writing: Float) {
         viewModelScope.launch {
             repository.insertScore(Score(date = date, reading = reading, listening = listening, writing = writing))
+        }
+    }
+    fun deleteScore(score: Score) {
+        viewModelScope.launch {
+            repository.deleteScore(score)
         }
     }
 }
@@ -108,31 +119,24 @@ fun MainContent(viewModel: ScoreViewModel) {
         var listening by remember { mutableStateOf(TextFieldValue()) }
         var writing by remember { mutableStateOf(TextFieldValue()) }
 
-        // 「OutlinedTextField」に修正。（見づらかったので。）
         OutlinedTextField(
             value = date.text,
             onValueChange = { date = TextFieldValue(it) },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("日付") }
         )
-
-        // 「OutlinedTextField」に修正。（見づらかったので。）
         OutlinedTextField(
             value = reading.text,
             onValueChange = { reading = TextFieldValue(it) },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Reading") }
         )
-
-        // 「OutlinedTextField」に修正。（見づらかったので。）
         OutlinedTextField(
             value = listening.text,
             onValueChange = { listening = TextFieldValue(it) },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Listening") }
         )
-
-        // 「OutlinedTextField」に修正。（見づらかったので。）
         OutlinedTextField(
             value = writing.text,
             onValueChange = { writing = TextFieldValue(it) },
@@ -149,6 +153,19 @@ fun MainContent(viewModel: ScoreViewModel) {
             )
         }) {
             Text("スコアを追加")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                if (scores.isNotEmpty()) {
+                    viewModel.deleteScore(scores.last())
+                }
+            },
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            Text("最後のスコアを削除")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
