@@ -1,28 +1,22 @@
 package com.example.comparechart
 
-import androidx.compose.ui.graphics.Color
+import android.app.DatePickerDialog
+import android.content.Context
 import android.os.Bundle
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.room.*
 import com.example.comparechart.ui.theme.CompareChartTheme
@@ -32,7 +26,6 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
-import kotlinx.coroutines.launch
 import java.util.Calendar
 
 class MainActivity : ComponentActivity() {
@@ -44,12 +37,13 @@ class MainActivity : ComponentActivity() {
         val viewModel = ScoreViewModel(repository)
 
         setContent {
+            val context = this
             CompareChartTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainContent(viewModel)
+                    MainContent(viewModel, context)
                 }
             }
         }
@@ -57,15 +51,18 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainContent(viewModel: ScoreViewModel) {
+fun MainContent(viewModel: ScoreViewModel, context: Context) {
     val scores by viewModel.scores.collectAsState(initial = emptyList())
 
-    var showLastScoreDialog by remember { mutableStateOf(false) }
-    var showAllScoresDialog by remember { mutableStateOf(false) }
-    var showErrorDialog by remember { mutableStateOf(false) }
+    var showLatestScoreDeleteDialog by remember { mutableStateOf(false) }
+    var showAllScoresDeleteDialog by remember { mutableStateOf(false) }
     var showDuplicateDateErrorDialog by remember { mutableStateOf(false) }
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var maxDataErrorDialog by remember { mutableStateOf(false) }
 
-    var selectedDate by remember { mutableStateOf("") } // 選択された日付
+    var selectedDate by remember { mutableStateOf("") }
+    var selectedYear by remember { mutableStateOf("") }
+
     var reading by remember { mutableStateOf(TextFieldValue()) }
     var listening by remember { mutableStateOf(TextFieldValue()) }
     var writing by remember { mutableStateOf(TextFieldValue()) }
@@ -77,16 +74,11 @@ fun MainContent(viewModel: ScoreViewModel) {
     ) {
         Spacer(modifier = Modifier.height(32.dp))
 
-        DrumRollTypeDatePicker { date ->
+        SelectDatePicker(context) { date->
             selectedDate = date
         }
-        OutlinedTextField(
-            value = selectedDate,
-            onValueChange = { },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("日付 (年-月-日)") },
-            readOnly = true
-        )
+        Text("受験日: $selectedDate")
+
         OutlinedTextField(
             value = reading.text,
             onValueChange = { reading = TextFieldValue(it) },
@@ -106,7 +98,7 @@ fun MainContent(viewModel: ScoreViewModel) {
             label = { Text("Writing") }
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Button(onClick = {
             if (scores.any { it.date == selectedDate }) {
@@ -117,12 +109,23 @@ fun MainContent(viewModel: ScoreViewModel) {
                 val writingScore = writing.text.toFloatOrNull()
 
                 if (readingScore != null && listeningScore != null && writingScore != null) {
-                    viewModel.addScore(
-                        selectedDate,
-                        readingScore,
-                        listeningScore,
-                        writingScore
-                    )
+                    // 選択された日付から年を抽出
+                    selectedYear = selectedDate.split("-")[0]
+                    // 同一年のデータ数をカウント
+                    val sameYearCount = scores.count { it.date.startsWith(selectedYear) }
+
+                    if (sameYearCount >= 3) {
+                        // 同一年データが3以上の場合
+                        maxDataErrorDialog = true
+                    } else {
+                        // データを追加
+                        viewModel.addScore(
+                            selectedDate,
+                            readingScore,
+                            listeningScore,
+                            writingScore
+                        )
+                    }
                 } else {
                     showErrorDialog = true
                 }
@@ -131,46 +134,48 @@ fun MainContent(viewModel: ScoreViewModel) {
             Text("スコアを追加")
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Button(onClick = {
             if (scores.isNotEmpty()) {
-                showLastScoreDialog = true
+                showLatestScoreDeleteDialog = true
             }
         }) {
-            Text("最後のスコアを削除")
+            Text("最新のスコアを削除")
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Button(onClick = {
-            showAllScoresDialog = true
+            showAllScoresDeleteDialog = true
         }) {
             Text("全てのスコアを削除")
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         ScoreChart(scores)
 
-        if (showLastScoreDialog) {
+        if (showLatestScoreDeleteDialog) {
             ConfirmDeleteDialog(
-                message = "最後のスコアを削除しますか？",
+                message = "最新のスコアを削除しますか？",
                 onConfirm = {
-                    viewModel.deleteScore(scores.last())
-                    showLastScoreDialog = false
+                    // 日付順で並び替え、最新のスコアを削除
+                    val latestScore = scores.maxByOrNull { it.date } // 日付が最も新しいスコアを取得
+                    latestScore?.let { viewModel.deleteScore(it) } // 存在すれば削除
+                    showLatestScoreDeleteDialog = false
                 },
-                onDismiss = { showLastScoreDialog = false }
+                onDismiss = { showLatestScoreDeleteDialog = false }
             )
         }
-        if (showAllScoresDialog) {
+        if (showAllScoresDeleteDialog) {
             ConfirmDeleteDialog(
                 message = "全てのスコアを削除しますか？",
                 onConfirm = {
                     viewModel.deleteAllScores()
-                    showAllScoresDialog = false
+                    showAllScoresDeleteDialog = false
                 },
-                onDismiss = { showAllScoresDialog = false }
+                onDismiss = { showAllScoresDeleteDialog = false }
             )
         }
         if (showDuplicateDateErrorDialog) {
@@ -187,172 +192,37 @@ fun MainContent(viewModel: ScoreViewModel) {
                 onDismiss = { showErrorDialog = false }
             )
         }
-    }
-}
-
-@Composable
-fun DrumRollTypeDatePicker(onDateSelected: (String) -> Unit) {
-    var isPickerVisible by remember { mutableStateOf(false) }
-    var selectedDate by remember { mutableStateOf("日付を選択") }
-
-    Box(contentAlignment = Alignment.Center) {
-        Column() {
-            Button(onClick = { isPickerVisible = true }) {
-                Text(text = selectedDate)
-            }
-        }
-
-        if (isPickerVisible) {
-            DatePickerDialog(
-                onDismiss = { isPickerVisible = false },
-                onDateSelected = { year, month, day ->
-                    selectedDate = "$year 年 $month 月 $day 日"
-                    onDateSelected(selectedDate)
-                    isPickerVisible = false
-                }
+        if (maxDataErrorDialog) {
+            OkDialog(
+                message = "同じ年で登録できるデータは３個までです。",
+                onConfirm = { maxDataErrorDialog = false },
+                onDismiss = { maxDataErrorDialog = false }
             )
         }
     }
 }
 
 @Composable
-fun DatePickerDialog(
-    onDismiss: () -> Unit,
-    onDateSelected: (Int, Int, Int) -> Unit
-) {
-    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-    val years = (2016..2100).toList()
-    val months = (1..12).toList()
-    val days = (1..31).toList()
-
-    var selectedYear by remember { mutableStateOf(currentYear) }
-    var selectedMonth by remember { mutableStateOf(1) }
-    var selectedDay by remember { mutableStateOf(1) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Button(onClick = { onDateSelected(selectedYear, selectedMonth, selectedDay) }) {
-                    Text("確定")
-                }
-            }
-        },
-        title = {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("日付を選択")
-            }
-        },
-        text = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                ScrollPicker(
-                    items = years,
-                    selectedItem = selectedYear,
-                    onItemSelected = { selectedYear = it },
-                    highlightColor = Color.Red
-                )
-                ScrollPicker(
-                    items = months,
-                    selectedItem = selectedMonth,
-                    onItemSelected = { selectedMonth = it },
-                    highlightColor = Color.Green
-                )
-                ScrollPicker(
-                    items = days,
-                    selectedItem = selectedDay,
-                    onItemSelected = { selectedDay = it },
-                    highlightColor = Color.Blue
-                )
-            }
-        }
+private fun SelectDatePicker(context: Context, onDateSelected: (String) -> Unit) {
+    val calendar = Calendar.getInstance()
+    val year = calendar.get(Calendar.YEAR)
+    val month = calendar.get(Calendar.MONTH)
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, selectedYear, selectedMonth, selectedDay ->
+            val formattedDate = String.format("%04d-%02d-%02d", selectedYear, selectedMonth + 1, selectedDay)
+            onDateSelected(formattedDate)
+        }, year, month, day
     )
-}
-
-@Composable
-fun <T> ScrollPicker(
-    items: List<T>,
-    selectedItem: T,
-    onItemSelected: (T) -> Unit,
-    highlightColor: Color
-) {
-    val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
-
-    // 初期位置にスクロール
-    LaunchedEffect(items, selectedItem) {
-        val initialIndex = items.indexOf(selectedItem).coerceAtLeast(0)
-        listState.scrollToItem(initialIndex)
-    }
-
-    // スクロール停止時の選択更新
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.isScrollInProgress }
-            .collect { isScrolling ->
-                if (!isScrolling) {
-                    val firstVisibleIndex = listState.firstVisibleItemIndex
-                    val firstVisibleItemOffset = listState.firstVisibleItemScrollOffset
-                    val visibleItems = listState.layoutInfo.visibleItemsInfo
-
-                    // 「月」では「12」を選択できるも「7 ~ 11」が選択不可能。
-                    // 「日」では「31」を選択できるも「26 ~ 30」が選択不可能。
-                    if (visibleItems.isNotEmpty()) {
-                        val centerIndex = if (firstVisibleItemOffset > (visibleItems.first().size / 2)) {
-                            firstVisibleIndex + 5
-                        } else {
-                            firstVisibleIndex
-                        }.coerceIn(0, items.lastIndex)
-
-                        onItemSelected(items[centerIndex])
-                    }
-                }
-            }
-    }
-
-    LazyColumn(
-        state = listState,
-        modifier = Modifier
-            .height(150.dp)
-            .width(80.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        items(items.size) { index ->
-            val item = items[index]
-            Text(
-                text = item.toString(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-                    .clickable {
-                        coroutineScope.launch {
-                            listState.animateScrollToItem(index)
-                            onItemSelected(item)
-                        }
-                    },
-                style = if (item == selectedItem) {
-                    MaterialTheme.typography.bodyLarge.copy(
-                        color = highlightColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
-                } else {
-                    MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp)
-                }
-            )
-        }
+    datePickerDialog.datePicker.maxDate = calendar.timeInMillis
+    Button(onClick = { datePickerDialog.show() }) {
+        Text("受験日を選択する")
     }
 }
 
 @Composable
-fun ConfirmDeleteDialog(
+private fun ConfirmDeleteDialog(
     message: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
@@ -374,7 +244,7 @@ fun ConfirmDeleteDialog(
 }
 
 @Composable
-fun OkDialog(
+private fun OkDialog(
     message: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
@@ -391,7 +261,9 @@ fun OkDialog(
 }
 
 @Composable
-fun ScoreChart(scores: List<Score>) {
+private fun ScoreChart(scores: List<Score>) {
+    val sortedScores = scores.sortedBy { it.date }
+
     AndroidView(
         factory = { context ->
             LineChart(context).apply {
@@ -403,12 +275,12 @@ fun ScoreChart(scores: List<Score>) {
         },
         modifier = Modifier
             .fillMaxWidth()
-            .height(300.dp)
+            .height(400.dp)
     ) { chart ->
-        val entriesReading = scores.mapIndexed { index, score -> Entry(index.toFloat(), score.reading) }
-        val entriesListening = scores.mapIndexed { index, score -> Entry(index.toFloat(), score.listening) }
-        val entriesWriting = scores.mapIndexed { index, score -> Entry(index.toFloat(), score.writing) }
-        val dates = scores.map { it.date }
+        val entriesReading = sortedScores.mapIndexed { index, score -> Entry(index.toFloat(), score.reading) }
+        val entriesListening = sortedScores.mapIndexed { index, score -> Entry(index.toFloat(), score.listening) }
+        val entriesWriting = sortedScores.mapIndexed { index, score -> Entry(index.toFloat(), score.writing) }
+        val dates = sortedScores.map { it.date }
 
         val dataSetReading = LineDataSet(entriesReading, "リーディングスコア").apply { color = android.graphics.Color.RED }
         val dataSetListening = LineDataSet(entriesListening, "リスニングスコア").apply { color = android.graphics.Color.BLUE }
@@ -420,6 +292,7 @@ fun ScoreChart(scores: List<Score>) {
             position = XAxis.XAxisPosition.BOTTOM
             granularity = 1f
         }
+        chart.axisLeft.axisMinimum = 0f
         chart.invalidate()
     }
 }
