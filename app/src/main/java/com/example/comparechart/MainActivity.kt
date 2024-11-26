@@ -26,6 +26,8 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+import com.github.mikephil.charting.highlight.Highlight
+import com.github.mikephil.charting.listener.OnChartValueSelectedListener
 import java.util.Calendar
 
 class MainActivity : ComponentActivity() {
@@ -286,13 +288,59 @@ private fun ScoreChart(scores: List<Score>) {
         val dataSetListening = LineDataSet(entriesListening, "リスニングスコア").apply { color = android.graphics.Color.BLUE }
         val dataSetWriting = LineDataSet(entriesWriting, "ライティングスコア").apply { color = android.graphics.Color.GREEN }
 
+        dataSetReading.apply {
+            valueTextSize = 12f
+            valueTextColor = android.graphics.Color.RED
+            lineWidth = 2f
+            mode = LineDataSet.Mode.CUBIC_BEZIER
+        }
+        dataSetListening.apply {
+            valueTextSize = 12f
+            valueTextColor = android.graphics.Color.BLUE
+            lineWidth = 2f
+            mode = LineDataSet.Mode.CUBIC_BEZIER
+        }
+        dataSetWriting.apply {
+            valueTextSize = 12f
+            valueTextColor = android.graphics.Color.GREEN
+            lineWidth = 2f
+            mode = LineDataSet.Mode.CUBIC_BEZIER
+        }
+
         chart.data = LineData(dataSetReading, dataSetListening, dataSetWriting)
         chart.xAxis.apply {
             valueFormatter = IndexAxisValueFormatter(dates)
             position = XAxis.XAxisPosition.BOTTOM
+            textSize = 12f
+            textColor = android.graphics.Color.BLACK
             granularity = 1f
         }
-        chart.axisLeft.axisMinimum = 0f
+        chart.axisLeft.apply {
+            axisMinimum = 0f
+            textSize = 12f
+            textColor = android.graphics.Color.BLACK
+        }
+        chart.axisRight.isEnabled = false
+        chart.description.apply {
+            isEnabled = true
+            text = "英検一次の一年間のスコアの推移"
+            textSize = 16f
+            textColor = android.graphics.Color.CYAN
+        }
+        chart.animateX(250, com.github.mikephil.charting.animation.Easing.Linear)
+        // 以下、作成した結果表示されているデータをタップ後に画面遷移するコード
+        chart.setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
+            override fun onValueSelected(e: Entry?, h: Highlight?) {
+                TODO("Not yet implemented")
+                e?.let {
+//                    onSelection(it.x, it.y)
+                }
+            }
+            override fun onNothingSelected() {
+                TODO("Not yet implemented")
+
+            }
+        })
         chart.invalidate()
     }
 }
