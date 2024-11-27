@@ -2,4 +2,20 @@
 <resources>
 
     <style name="Theme.CompareChart" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!--    以下、自分の書いた書き方兼エラーが出た書き方-->
+
+    <!--    <style name="CustomDatePickerTheme" parent="android:Theme.Material.Light.Dialog">-->
+    <!--        &lt;!&ndash; プライマリカラーを変更 &ndash;&gt;-->
+    <!--        <color name="colorPrimary">#FF5722</color>-->
+    <!--        <color name="colorSecondary">#FF9800</color>-->
+    <!--    </style>-->
+
+    <!--    <style name="CustomDatePickerTheme" parent="android:Theme.Material.Light.Dialog">-->
+    <!--        <item name="colorAccent">#6495ED</item>-->
+    <!--    </style>-->
+
+    <style name="CustomDatePickerTheme" parent="android:Theme.Material.Light.Dialog">
+        <item name="android:colorAccent">#6495ED</item>
+    </style>
 </resources>

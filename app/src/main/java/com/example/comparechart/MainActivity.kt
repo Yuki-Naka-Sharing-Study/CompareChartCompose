@@ -213,6 +213,7 @@ private fun SelectDatePicker(context: Context, onDateSelected: (String) -> Unit)
     val day = calendar.get(Calendar.DAY_OF_MONTH)
     val datePickerDialog = DatePickerDialog(
         context,
+        R.style.CustomDatePickerTheme,
         { _, selectedYear, selectedMonth, selectedDay ->
             val formattedDate = String.format("%04d-%02d-%02d", selectedYear, selectedMonth + 1, selectedDay)
             onDateSelected(formattedDate)
